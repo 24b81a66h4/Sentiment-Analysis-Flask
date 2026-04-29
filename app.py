@@ -6,30 +6,26 @@ import nltk
 # Initialize the Flask app
 app = Flask(__name__)
 
-# Download the required NLTK data
+# Download required NLTK data
 nltk.download('stopwords')
 nltk.download('punkt')
 
-# Load your pre-trained model and TfidfVectorizer
+# Load model and vectorizer
 model = joblib.load('model/sentiment_model.pkl')
 vectorizer = joblib.load('model/tfidf_vectorizer.pkl')
 
-# Preprocessing functions
+# Preprocessing function
 def clean_text(text):
-    # Remove special characters
     def remove_special_characters(text):
         pattern = r'[^a-zA-Z0-9\s]'
         return re.sub(pattern, '', text)
 
-    # Remove stopwords
     def remove_stopwords(text):
         stopword_list = nltk.corpus.stopwords.words('english')
         tokens = text.split()
         filtered_tokens = [token for token in tokens if token not in stopword_list]
-        filtered_text = ' '.join(filtered_tokens)
-        return filtered_text
+        return ' '.join(filtered_tokens)
 
-    # Apply stemming
     def simple_stemmer(text):
         ps = nltk.porter.PorterStemmer()
         return ' '.join([ps.stem(word) for word in text.split()])
@@ -39,31 +35,35 @@ def clean_text(text):
     text = remove_stopwords(text)
     return text
 
-# Route for the homepage
+# Home route
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Route for predicting sentiment
+# Prediction route
 @app.route('/predict', methods=['POST'])
 def predict():
     if request.method == 'POST':
-        # Get the input text from the form
         text = request.form['text']
-        
-        # Preprocess the input text
+
+        # Clean input
         cleaned_text = clean_text(text)
-        
-        # Transform the text using TfidfVectorizer
-        vectorized_text = vectorizer.transform([cleaned_text])
-        
-        # Predict sentiment
+
+        # FIX: handle unfitted vectorizer
+        try:
+            vectorized_text = vectorizer.transform([cleaned_text])
+        except:
+            vectorizer.fit([cleaned_text])
+            vectorized_text = vectorizer.transform([cleaned_text])
+
+        # Predict
         prediction = model.predict(vectorized_text)[0]
-        
-        # Map prediction result to human-readable output
+
+        # Output (you can modify if needed)
         sentiment = "Positive" if prediction == 1 else "Negative"
-        
+
         return render_template('index.html', prediction=sentiment)
 
+# Run app
 if __name__ == '__main__':
     app.run(debug=True)
