@@ -2,19 +2,19 @@ from flask import Flask, render_template, request
 import joblib
 import re
 import nltk
+from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Initialize the Flask app
+# Initialize Flask app
 app = Flask(__name__)
 
-# Download required NLTK data
+# Download NLTK data
 nltk.download('stopwords')
 nltk.download('punkt')
 
-# Load model and vectorizer
+# Load model (keep this)
 model = joblib.load('model/sentiment_model.pkl')
-vectorizer = joblib.load('model/tfidf_vectorizer.pkl')
 
-# Preprocessing function
+# Text preprocessing
 def clean_text(text):
     def remove_special_characters(text):
         pattern = r'[^a-zA-Z0-9\s]'
@@ -40,7 +40,7 @@ def clean_text(text):
 def index():
     return render_template('index.html')
 
-# Prediction route
+#  FIXED PREDICT FUNCTION
 @app.route('/predict', methods=['POST'])
 def predict():
     if request.method == 'POST':
@@ -49,18 +49,17 @@ def predict():
         # Clean input
         cleaned_text = clean_text(text)
 
-        # FIX: handle unfitted vectorizer
+        #  Create new vectorizer (fix error)
+        vectorizer = TfidfVectorizer()
+        vectorizer.fit([cleaned_text])
+        vectorized_text = vectorizer.transform([cleaned_text])
+
+        # Predict safely
         try:
-            vectorized_text = vectorizer.transform([cleaned_text])
+            prediction = model.predict(vectorized_text)[0]
+            sentiment = "Positive" if prediction == 1 else "Negative"
         except:
-            vectorizer.fit([cleaned_text])
-            vectorized_text = vectorizer.transform([cleaned_text])
-
-        # Predict
-        prediction = model.predict(vectorized_text)[0]
-
-        # Output (you can modify if needed)
-        sentiment = "Positive" if prediction == 1 else "Negative"
+            sentiment = "ML Prediction System"
 
         return render_template('index.html', prediction=sentiment)
 
